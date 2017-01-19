@@ -1,0 +1,7 @@
+<Modules>
+    <Module path="libOpenNI.so" />
+    <Module path="libnimMockNodes.so" />
+    <Module path="libnimRecorder.so" />
+    <Module path="libnimCodecs.so" />
+    <Module path="libmodule-lips.so" />
+</Modules>
