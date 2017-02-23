@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="10dp">
+
+    <TextView
+        android:id="@+id/TextSupportList"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="--- Default Camera Support ---\nLIPS FT6\nLIPS GT1\nPrimeSense, Xtion\n\n\nIf your device is not listed, please enter the usb id:"/>
+
+    <EditText
+        android:id="@+id/EditCustomizedVid"
+        android:layout_width="100dp"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/TextSupportList"
+        android:hint="VID"/>
+
+    <EditText
+        android:id="@+id/EditCustomizedTofPid"
+        android:layout_width="100dp"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/TextSupportList"
+        android:layout_toEndOf="@+id/EditCustomizedVid"
+        android:hint="ToF_PID"/>
+
+    <EditText
+        android:id="@+id/EditCustomizedRgbPid"
+        android:layout_width="100dp"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/TextSupportList"
+        android:layout_toEndOf="@+id/EditCustomizedTofPid"
+        android:hint="RGB_PID"/>
+
+</RelativeLayout>
