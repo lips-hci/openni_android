@@ -74,14 +74,11 @@ public class SimpleReadActivity extends Activity
     private PendingIntent mPermissionIntent;
     private IntentFilter mUsbFilter;
 
-    // [PrimeSense/Xtion] 1d27:0601 / 1d27:0600
-    private final String sPS_VID = "1D27";
-    private final String sPS_PID1 = "601";
-    private final String sPS_PID2 = "600";
-
     // [Generic LIPS Camera] (ToF)05c8:022b / (RGB) 05c8:0422
     private final CameraUsbInfo cameraLipsFT6 = new CameraUsbInfo( "5C8", "422", "22B" );
     private final CameraUsbInfo cameraLipsGT1 = new CameraUsbInfo( "2DF2", "215", "213" );
+    private final CameraUsbInfo cameraLipsGT2 = new CameraUsbInfo( "2DF2", "", "214" );
+    private final CameraUsbInfo cameraLipsHL1 = new CameraUsbInfo( "2959", "3001", "3001");
     private static CameraUsbInfo cameraLipsOthers = null;
     private final int TOF_CAMERA = 1;
     private final int RGB_CAMERA = 2;
@@ -411,10 +408,25 @@ public class SimpleReadActivity extends Activity
                         Log.e( TAG, "Unrecognized camera module (" + device.getProductId() + "). Please contact vendor." );
                     }
                 }
-                else if ( VID.equalsIgnoreCase( sPS_VID ) )
+                else if ( VID.equalsIgnoreCase( cameraLipsGT2.getVID() ) )
                 {
-                    // Allow PrimeSense device
-                    if ( PID.equalsIgnoreCase( sPS_PID1 ) || PID.equalsIgnoreCase( sPS_PID2 ) )
+                    if ( PID.equalsIgnoreCase( cameraLipsGT2.getToF_PID() ) )
+                    {
+                        mToFCamera = device;
+                        bToFCameraFound = true;
+
+                        // Assign RGB to the same device
+                        mRGBCamera = device;
+                        bRGBCameraFound = true;
+                    }
+                    else
+                    {
+                        Log.e( TAG, "Unrecognized camera module (" + device.getProductId() + "). Please contact vendor." );
+                    }
+                }
+                else if ( VID.equalsIgnoreCase( cameraLipsHL1.getVID() ) )
+                {
+                    if ( PID.equalsIgnoreCase( cameraLipsHL1.getToF_PID() ) )
                     {
                         mToFCamera = device;
                         bToFCameraFound = true;
@@ -434,11 +446,25 @@ public class SimpleReadActivity extends Activity
                     {
                         mToFCamera = device;
                         bToFCameraFound = true;
+
+                        if ( cameraLipsOthers.getToF_PID().equalsIgnoreCase( cameraLipsOthers.getRGB_PID() ) || cameraLipsOthers.getRGB_PID().isEmpty() )
+                        {
+                            // Assign RGB to the same device
+                            mRGBCamera = device;
+                            bRGBCameraFound = true;
+                        }
                     }
                     else if ( PID.equalsIgnoreCase( cameraLipsOthers.getRGB_PID() ) )
                     {
                         mRGBCamera = device;
                         bRGBCameraFound = true;
+
+                        if ( cameraLipsOthers.getToF_PID().isEmpty() )
+                        {
+                            // Assign ToF to the same device
+                            mToFCamera = device;
+                            bToFCameraFound = true;
+                        }
                     }
                     else
                     {
