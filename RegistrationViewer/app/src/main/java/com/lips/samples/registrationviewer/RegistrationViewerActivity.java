@@ -1,4 +1,4 @@
-package com.lips.samples.simpleread;
+package com.lips.samples.registrationviewer;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -17,12 +17,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.EditText;
-import android.widget.ScrollView;
-import android.widget.TextView;
+import android.view.ViewTreeObserver;
+import android.widget.LinearLayout;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -31,7 +27,7 @@ import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Iterator;
 
-public class SimpleReadActivity extends Activity
+public class RegistrationViewerActivity extends Activity
 {
     private class CameraUsbInfo
     {
@@ -62,7 +58,7 @@ public class SimpleReadActivity extends Activity
 
     private final String TAG = getClass().getSimpleName();
     private final String TAG_USB = TAG + "_USB";
-    private final String ACTION_USB_PERMISSION = "com.lips.samples.simpleread.USB_DEVICE_PERMISSION";
+    private final String ACTION_USB_PERMISSION = "com.lips.samples.registrationviewer.USB_DEVICE_PERMISSION";
     private final String ACTION_USB_ATTACHED = "android.hardware.usb.action.USB_DEVICE_ATTACHED";
     private final String ACTION_USB_DETACHED = "android.hardware.usb.action.USB_DEVICE_DETACHED";
     private final String ASSETS_DIR_PREFIX = "openni";
@@ -73,32 +69,26 @@ public class SimpleReadActivity extends Activity
     private boolean bToFCameraFound = false, bRGBCameraFound = false;
     private PendingIntent mPermissionIntent;
 
-    // [Generic LIPS Camera] (ToF)05c8:022b / (RGB) 05c8:0422
-    private final CameraUsbInfo cameraLipsFT6 = new CameraUsbInfo( "5C8", "422", "22B" );
+    // [Generic LIPS Camera] lipsedge
     private final CameraUsbInfo cameraLipsGT1 = new CameraUsbInfo( "2DF2", "215", "213" );
-    private final CameraUsbInfo cameraLipsGT2 = new CameraUsbInfo( "2DF2", "", "214" );
-    private final CameraUsbInfo cameraLipsHL1 = new CameraUsbInfo( "2959", "3001", "3001");
-    private static CameraUsbInfo cameraLipsOthers = null;
     private final int TOF_CAMERA = 1;
     private final int RGB_CAMERA = 2;
 
-    private boolean isSimpleReadInitialized = false;
-    private Thread simpleReadThread;
+    private boolean isRegistrationViewerInitialized = false;
+    private Thread registrationViewerThread;
     private boolean keepRunning = true;
+    private int errorBypass = 2;
 
-    private SimpleRead simpleRead;
-    private TextView textShowDepth;
-    private ScrollView scrollView;
-    private static String depthInfo;
-    private View dialogView;
-    private EditText editVid, editTofPid, editRgbPid;
+    private RegistrationViewer registrationViewer;
+    private Viewer depthViewer, imageViewer;
+    private LinearLayout linearLayout;
 
 
     //--------------------- Getting USB Permission ---------------------//
     private final BroadcastReceiver mUsbReceiver = new BroadcastReceiver()
     {
         @Override
-        public void onReceive( Context context, Intent intent )
+        public void onReceive(Context context, Intent intent )
         {
             String action = intent.getAction();
             Log.d( TAG_USB, "mUsbReceiver::onReceive - " + action );
@@ -232,7 +222,7 @@ public class SimpleReadActivity extends Activity
 
     private boolean connectToCamera( UsbDevice device )
     {
-        boolean isConnect = false;
+        boolean isConnect;
 
         // Make connection
         UsbDeviceConnection connection = mUsbManager.openDevice( device );
@@ -260,7 +250,7 @@ public class SimpleReadActivity extends Activity
             if ( msg.what == USB_PERMISSION_GOT )
             {
                 Log.d( TAG, "Handler got USB_PERMISSION_GOT message: " + msg.what );
-                startSimpleRead();
+                startRegistrationViewer();
             }
         }
     };
@@ -334,7 +324,7 @@ public class SimpleReadActivity extends Activity
         protected void onPreExecute()
         {
             super.onPreExecute();
-            dialog = ProgressDialog.show( SimpleReadActivity.this, "Starting...", "Open camera, please wait...", false, false );
+            dialog = ProgressDialog.show( RegistrationViewerActivity.this, "Starting...", "Open camera, please wait...", false, false );
         }
     }
 
@@ -373,24 +363,7 @@ public class SimpleReadActivity extends Activity
                 Log.d( TAG_USB, "VID = " + VID + "/ PID = " + PID );
 
                 // Recognize USB Devices
-                if ( VID.equalsIgnoreCase( cameraLipsFT6.getVID() ) )
-                {
-                    if ( PID.equalsIgnoreCase( cameraLipsFT6.getToF_PID() ) )
-                    {
-                        mToFCamera = device;
-                        bToFCameraFound = true;
-                    }
-                    else if ( PID.equalsIgnoreCase( cameraLipsFT6.getRGB_PID() ) )
-                    {
-                        mRGBCamera = device;
-                        bRGBCameraFound = true;
-                    }
-                    else
-                    {
-                        Log.e( TAG, "Unrecognized camera module (" + device.getProductId() + "). Please contact vendor." );
-                    }
-                }
-                else if ( VID.equalsIgnoreCase( cameraLipsGT1.getVID() ) )
+                if ( VID.equalsIgnoreCase( cameraLipsGT1.getVID() ) )
                 {
                     if ( PID.equalsIgnoreCase( cameraLipsGT1.getToF_PID() ) )
                     {
@@ -401,69 +374,6 @@ public class SimpleReadActivity extends Activity
                     {
                         mRGBCamera = device;
                         bRGBCameraFound = true;
-                    }
-                    else
-                    {
-                        Log.e( TAG, "Unrecognized camera module (" + device.getProductId() + "). Please contact vendor." );
-                    }
-                }
-                else if ( VID.equalsIgnoreCase( cameraLipsGT2.getVID() ) )
-                {
-                    if ( PID.equalsIgnoreCase( cameraLipsGT2.getToF_PID() ) )
-                    {
-                        mToFCamera = device;
-                        bToFCameraFound = true;
-
-                        // Assign RGB to the same device
-                        mRGBCamera = device;
-                        bRGBCameraFound = true;
-                    }
-                    else
-                    {
-                        Log.e( TAG, "Unrecognized camera module (" + device.getProductId() + "). Please contact vendor." );
-                    }
-                }
-                else if ( VID.equalsIgnoreCase( cameraLipsHL1.getVID() ) )
-                {
-                    if ( PID.equalsIgnoreCase( cameraLipsHL1.getToF_PID() ) )
-                    {
-                        mToFCamera = device;
-                        bToFCameraFound = true;
-
-                        // Assign RGB to the same device
-                        mRGBCamera = device;
-                        bRGBCameraFound = true;
-                    }
-                    else
-                    {
-                        Log.e( TAG, "Unrecognized camera module (" + device.getProductId() + "). Please contact vendor." );
-                    }
-                }
-                else if ( cameraLipsOthers != null && VID.equalsIgnoreCase( cameraLipsOthers.getVID() ) )
-                {
-                    if ( PID.equalsIgnoreCase( cameraLipsOthers.getToF_PID() ) )
-                    {
-                        mToFCamera = device;
-                        bToFCameraFound = true;
-
-                        if ( cameraLipsOthers.getToF_PID().equalsIgnoreCase( cameraLipsOthers.getRGB_PID() ) || cameraLipsOthers.getRGB_PID().isEmpty() )
-                        {
-                            // Assign RGB to the same device
-                            mRGBCamera = device;
-                            bRGBCameraFound = true;
-                        }
-                    }
-                    else if ( PID.equalsIgnoreCase( cameraLipsOthers.getRGB_PID() ) )
-                    {
-                        mRGBCamera = device;
-                        bRGBCameraFound = true;
-
-                        if ( cameraLipsOthers.getToF_PID().isEmpty() )
-                        {
-                            // Assign ToF to the same device
-                            mToFCamera = device;
-                            bToFCameraFound = true;
-                        }
                     }
                     else
                     {
@@ -494,6 +404,7 @@ public class SimpleReadActivity extends Activity
         UsbMonitorAsyncTask usbMonitor = new UsbMonitorAsyncTask();
         usbMonitor.execute();
     }
+
 
     //-------------------- Assets Loading Functions --------------------//
     private void loadDataFromAssets()
@@ -577,77 +488,118 @@ public class SimpleReadActivity extends Activity
         }
     }
 
-
-    //------- Main Program Functions (OpenNI Related Executions) -------//
-    private void startSimpleRead()
+    //--------------------- Main Program Functions ---------------------//
+    private void initViewers()
     {
-        initSimpleRead();
+        depthViewer = new Viewer( this );
+        imageViewer = new Viewer( this );
 
-        //Start main loop of SimpleRead
+        depthViewer.setDimensions( registrationViewer.depthWidth, registrationViewer.depthHeight );
+        linearLayout.addView( depthViewer );
+
+        imageViewer.setDimensions( registrationViewer.imageWidth, registrationViewer.imageHeight );
+        linearLayout.addView( imageViewer );
+
+        setContentView( linearLayout );
+
+        depthViewer.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener()
+        {
+            @Override
+            public void onGlobalLayout()
+            {
+                depthViewer.getViewTreeObserver().removeOnGlobalLayoutListener( this );
+                double ratio = ( double )depthViewer.getWidth() / ( double )registrationViewer.depthWidth;
+                LinearLayout.LayoutParams depthParam = new LinearLayout.LayoutParams( LinearLayout.LayoutParams.MATCH_PARENT, ( int )( ratio * registrationViewer.depthHeight ) );
+                depthViewer.setLayoutParams( depthParam );
+            }
+        } );
+    }
+
+    private void startRegistrationViewer()
+    {
+        initRegistrationViewer();
+
+        //Start main loop of RegistrationViewer
         keepRunning = true;
-        simpleReadThread = new Thread()
+        registrationViewerThread = new Thread()
         {
             public void run()
             {
                 while ( keepRunning )
                 {
-                    depthInfo = simpleRead.updateDepth();
-                    if ( depthInfo == null )
+                    try
                     {
-                        continue;
+                        registrationViewer.updateData();
+                        registrationViewer.drawBitmap( depthViewer, imageViewer );
+                        depthViewer.reDraw( registrationViewer.getFPS( true ) );
+                        imageViewer.reDraw( registrationViewer.getFPS( false ) );
                     }
-
-                    runOnUiThread( new Runnable()
+                    catch ( Exception e )
                     {
-                        public void run()
+                        Log.e( TAG, "An exception was caught during mainLoop:", e );
+                        if ( errorBypass-- > 0 )
                         {
-                            textShowDepth.append( depthInfo );
-                            scrollView.fullScroll( ScrollView.FOCUS_DOWN );
+                            Log.w( TAG, "Keep going... bypass this exception!" );
                         }
-                    } );
+                        else
+                        {
+                            Log.w(TAG, "Program finished due to exceptions.");
+                            break;
+                        }
+                    }
                 }
-                Log.i( TAG, "SimpleRead MainLoop finished." );
 
-                /*if(!keepRunning)
+                if ( !keepRunning )
                 {
-                    return;
-                }*/
+                    Log.d( TAG, "Program finished by termination." );
+                }
+                else
+                {
+                    Log.d( TAG, "Triggering finish()..." );
+                    finish();
+                }
             }
         };
-        simpleReadThread.setName( "SimpleRead MainLoop Thread" );
-        simpleReadThread.start();
+        registrationViewerThread.setName( "RegistrationViewer MainLoop Thread" );
+        registrationViewerThread.start();
     }
 
-    private synchronized void initSimpleRead()
+    private synchronized void initRegistrationViewer()
     {
-        if ( isSimpleReadInitialized )
+        if ( isRegistrationViewerInitialized )
         {
             // The program has been already initialized.
             return;
         }
 
-        setContentView( R.layout.main );
-        textShowDepth = ( TextView ) findViewById( R.id.textShowDepth );
-        scrollView = ( ScrollView ) findViewById( R.id.scrollView );
-        simpleRead = new SimpleRead( SimpleReadActivity.this.getFilesDir() );
+        Log.d( TAG, "init" );
 
-        isSimpleReadInitialized = true;
+        registrationViewer = new RegistrationViewer( RegistrationViewerActivity.this.getFilesDir() );
+        linearLayout = new LinearLayout( this );
+        LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams( LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.MATCH_PARENT );
+        linearLayout.setLayoutParams( layoutParams );
+        linearLayout.setOrientation( LinearLayout.VERTICAL );
+        initViewers();
+
+        isRegistrationViewerInitialized = true;
+
+        Log.d( TAG, "init done" );
     }
 
-    private synchronized void terminateSimpleRead()
+    private synchronized void terminateRegistrationViewer()
     {
-        if ( !isSimpleReadInitialized )
+        if ( !isRegistrationViewerInitialized )
         {
             return;
         }
 
         keepRunning = false;
-        while ( simpleReadThread != null )
+        while ( registrationViewerThread != null )
         {
             try
             {
-                simpleReadThread.join();
-                simpleReadThread = null;
+                registrationViewerThread.join();
+                registrationViewerThread = null;
                 break;
             }
             catch ( InterruptedException e )
@@ -657,8 +609,8 @@ public class SimpleReadActivity extends Activity
         }
 
         // Start clean up.
-        isSimpleReadInitialized = false;
-        simpleRead.cleanup();
+        isRegistrationViewerInitialized = false;
+        registrationViewer.cleanup();
     }
 
 
@@ -681,12 +633,6 @@ public class SimpleReadActivity extends Activity
         filter.addAction( ACTION_USB_ATTACHED );
         filter.addAction( ACTION_USB_DETACHED );
         registerReceiver( mUsbAttachDetachReceiver, filter );
-
-        // Customized Camera USB Id input
-        dialogView = LayoutInflater.from( SimpleReadActivity.this ).inflate( R.layout.alertlayout_usb_id, null );
-        editVid = ( EditText ) dialogView.findViewById( R.id.EditCustomizedVid );
-        editTofPid = ( EditText ) dialogView.findViewById( R.id.EditCustomizedTofPid );
-        editRgbPid = ( EditText ) dialogView.findViewById( R.id.EditCustomizedRgbPid );
 
         Log.d( TAG, "onCreate done" );
     }
@@ -716,32 +662,18 @@ public class SimpleReadActivity extends Activity
         Log.i( TAG, "onStart" );
         super.onStart();
 
-        if ( dialogView.getParent() != null )
-        {
-            ( ( ViewGroup ) dialogView.getParent() ).removeView( dialogView );
-        }
-        AlertDialog.Builder dialogCustomUsbId = new AlertDialog.Builder( SimpleReadActivity.this );
-        dialogCustomUsbId.setView( dialogView );
-        dialogCustomUsbId.setTitle( "Support Camera List" );
-        dialogCustomUsbId.setNegativeButton( "Use Default Camera", new DialogInterface.OnClickListener()
+        AlertDialog.Builder dialogSupportDevicesList = new AlertDialog.Builder( RegistrationViewerActivity.this );
+        dialogSupportDevicesList.setTitle( "Supported Camera List" );
+        dialogSupportDevicesList.setMessage( "This application only supports lipsedge-DL currently." );
+        dialogSupportDevicesList.setPositiveButton( "OK", new DialogInterface.OnClickListener()
         {
             @Override
             public void onClick( DialogInterface dialogInterface, int i )
             {
-                cameraLipsOthers = null;
                 checkAttachedUsb();
             }
         } );
-        dialogCustomUsbId.setPositiveButton( "Add My Own Camera", new DialogInterface.OnClickListener()
-        {
-            @Override
-            public void onClick( DialogInterface dialogInterface, int i )
-            {
-                cameraLipsOthers = new CameraUsbInfo( editVid.getText().toString(), editRgbPid.getText().toString(), editTofPid.getText().toString() );
-                checkAttachedUsb();
-            }
-        } );
-        dialogCustomUsbId.show();
+        dialogSupportDevicesList.show();
     }
 
     @Override
@@ -750,7 +682,7 @@ public class SimpleReadActivity extends Activity
         Log.i( TAG, "onStop" );
         super.onStop();
 
-        terminateSimpleRead();
+        terminateRegistrationViewer();
         Log.d( TAG, "Triggering finish()..." );
         finish();
     }
