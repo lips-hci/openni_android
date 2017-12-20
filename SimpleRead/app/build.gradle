@@ -2,7 +2,13 @@ apply plugin: 'com.android.application'
 
 android {
     compileSdkVersion 25
-    buildToolsVersion "25.0.1"
+    //buildToolsVersion "25.0.1"
+    /* Warning:The specified Android SDK Build Tools version (25.0.1) is ignored, as it is below
+     * the minimum supported version (26.0.2) for Android Gradle Plugin 3.0.1. Android SDK Build
+     * Tools 26.0.2 will be used. To suppress this warning, remove "buildToolsVersion '25.0.1'"
+     * from your build.gradle file, as each version of the Android Gradle Plugin now has a default
+     * version of the build tools.
+     */
     defaultConfig {
         applicationId "com.lips.samples.simpleread"
         minSdkVersion 18

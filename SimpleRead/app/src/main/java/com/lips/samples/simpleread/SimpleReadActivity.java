@@ -35,24 +35,24 @@ public class SimpleReadActivity extends Activity
 {
     private class CameraUsbInfo
     {
-        public CameraUsbInfo( String vid, String rgb, String tof )
+        CameraUsbInfo( String vid, String rgb, String tof )
         {
             VID = vid;
             PID_RGB = rgb;
             PID_ToF = tof;
         }
 
-        public String getVID()
+        String getVID()
         {
             return VID;
         }
 
-        public String getRGB_PID()
+        String getRGB_PID()
         {
             return PID_RGB;
         }
 
-        public String getToF_PID()
+        String getToF_PID()
         {
             return PID_ToF;
         }
@@ -72,7 +72,6 @@ public class SimpleReadActivity extends Activity
     private UsbDevice mToFCamera, mRGBCamera;
     private boolean bToFCameraFound = false, bRGBCameraFound = false;
     private PendingIntent mPermissionIntent;
-    private IntentFilter mUsbFilter;
 
     // [Generic LIPS Camera] (ToF)05c8:022b / (RGB) 05c8:0422
     private final CameraUsbInfo cameraLipsFT6 = new CameraUsbInfo( "5C8", "422", "22B" );
@@ -674,7 +673,7 @@ public class SimpleReadActivity extends Activity
 
         // USB permission intent receiver registration
         mPermissionIntent = PendingIntent.getBroadcast( this, 0, new Intent( ACTION_USB_PERMISSION ), 0 );
-        mUsbFilter = new IntentFilter( ACTION_USB_PERMISSION );
+        IntentFilter mUsbFilter = new IntentFilter( ACTION_USB_PERMISSION );
         registerReceiver( mUsbReceiver, mUsbFilter );
 
         // USB attach/detach events intent receiver registration

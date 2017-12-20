@@ -11,7 +11,7 @@ import android.util.Log;
  * OpenNI related executions.
  ***********************************/
 
-public class SimpleRead
+class SimpleRead
 {
     private final String TAG = getClass().getSimpleName();
     private final String TAG_DATA = TAG + "_DATA";
@@ -23,7 +23,7 @@ public class SimpleRead
 
     private static long updateStartTime = 0;
 
-    public SimpleRead(File activityFileDir)
+    SimpleRead(File activityFileDir)
     {
         try
         {
@@ -40,9 +40,18 @@ public class SimpleRead
         }
     }
 
-    public void cleanup()
+    void cleanup()
     {
         Log.d(TAG, "Start Cleanup");
+
+        try
+        {
+            context.stopGeneratingAll();
+        }
+        catch ( StatusException e )
+        {
+            Log.e( TAG, "Exception!", e );
+        }
 
         scriptNode.value.dispose();
         scriptNode = null;
@@ -54,7 +63,7 @@ public class SimpleRead
         Log.d(TAG, "Cleanup Done");
     }
 
-    public String updateDepth()
+    String updateDepth()
     {
         long timePerFrame;
         float fps = 0;
