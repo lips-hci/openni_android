@@ -70,7 +70,8 @@ public class RegistrationViewerActivity extends Activity
     private PendingIntent mPermissionIntent;
 
     // [Generic LIPS Camera] lipsedge
-    private final CameraUsbInfo cameraLipsGT1 = new CameraUsbInfo( "2DF2", "215", "213" );
+    private final CameraUsbInfo cameraLIPSedgeDL = new CameraUsbInfo( "2DF2", "215", "213" );
+    private final CameraUsbInfo cameraLIPSedgeM5 = new CameraUsbInfo( "2959", "3001", "3001");
     private final int TOF_CAMERA = 1;
     private final int RGB_CAMERA = 2;
 
@@ -363,17 +364,40 @@ public class RegistrationViewerActivity extends Activity
                 Log.d( TAG_USB, "VID = " + VID + "/ PID = " + PID );
 
                 // Recognize USB Devices
-                if ( VID.equalsIgnoreCase( cameraLipsGT1.getVID() ) )
+                if ( VID.equalsIgnoreCase( cameraLIPSedgeDL.getVID() ) )
                 {
-                    if ( PID.equalsIgnoreCase( cameraLipsGT1.getToF_PID() ) )
+                    if ( PID.equalsIgnoreCase( cameraLIPSedgeDL.getToF_PID() ) )
                     {
                         mToFCamera = device;
                         bToFCameraFound = true;
                     }
-                    else if ( PID.equalsIgnoreCase( cameraLipsGT1.getRGB_PID() ) )
+                    else if ( PID.equalsIgnoreCase( cameraLIPSedgeDL.getRGB_PID() ) )
                     {
                         mRGBCamera = device;
                         bRGBCameraFound = true;
+                    }
+                    else
+                    {
+                        Log.e( TAG, "Unrecognized camera module (" + device.getProductId() + "). Please contact vendor." );
+                    }
+                }
+                else if ( VID.equalsIgnoreCase( cameraLIPSedgeM5.getVID() ) )
+                {
+                    if ( PID.equalsIgnoreCase( cameraLIPSedgeM5.getToF_PID() ) )
+                    {
+                        mToFCamera = device;
+                        bToFCameraFound = true;
+
+                        // Assign RGB to the same device
+                        mRGBCamera = device;
+                        bRGBCameraFound = true;
+
+                        // Call the handler to start the application
+                        Message msg = new Message();
+                        msg.what = USB_PERMISSION_GOT;
+                        mHandler.sendMessage( msg );
+
+                        return;
                     }
                     else
                     {
@@ -664,7 +688,7 @@ public class RegistrationViewerActivity extends Activity
 
         AlertDialog.Builder dialogSupportDevicesList = new AlertDialog.Builder( RegistrationViewerActivity.this );
         dialogSupportDevicesList.setTitle( "Supported Camera List" );
-        dialogSupportDevicesList.setMessage( "This application only supports lipsedge-DL currently." );
+        dialogSupportDevicesList.setMessage( "This application only supports LIPSedge-DL and LIPSedge-M5 currently." );
         dialogSupportDevicesList.setPositiveButton( "OK", new DialogInterface.OnClickListener()
         {
             @Override
