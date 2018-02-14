@@ -30,9 +30,9 @@ git clone https://github.com/lips-hci/openni_android.git LIPS_Sample
 
 Please contact with us by e-mail [info@lips-hci.com](mailto:info@lips-hci.com) to have latest library.
 
-> ## Note: If you are using HL1 camera, below operations are needed. ##
+> ## Note: If you are using M5 camera, below operations are needed. ##
 >
-> ### Replace .so for HL1
+> ### Replace .so for M5
 >
 >Under path: SimpleRead/app/src/main/jniLibs/armeabi-v7a
 >
